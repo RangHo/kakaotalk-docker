@@ -1,0 +1,36 @@
+#!/bin/sh
+set -e
+
+# Check which container backend is available
+BACKEND=""
+if command -v podman >/dev/null 2>&1; then
+    BACKEND="podman"
+elif command -v docker >/dev/null 2>&1; then
+    BACKEND="docker"
+else
+    echo "No container backend is available."
+    exit 1
+fi
+
+# Make sure $XDG_CACHE_DIR/kakaotalk is available
+KAKAOTALK_CACHE_DIR="${XDG_CACHE_DIR:-$HOME/.cache}/kakaotalk"
+if ! [ -d "$KAKAOTALK_CACHE_DIR" ]; then
+    mkdir -p "$KAKAOTALK_CACHE_DIR"
+fi
+
+# Allow X11 connection over Unix socket
+xhost +local:
+
+# Run KakaoTalk container
+$BACKEND run --rm \
+     --name kakaotalk \
+     -e "DISPLAY=unix$DISPLAY" \
+     -e "GTK_IM_MODULE=$GTK_IM_MODULE" \
+     -e "QT_IM_MODULE=$QT_IM_MODULE" \
+     -e "XMODIFIERS=$XMODIFIERS" \
+     -v /etc/localtime:/etc/localtime:ro \
+     -v /tmp/.X11-unix:/tmp/.X11-unix \
+     -v "$KAKAOTALK_CACHE_DIR:/kakaotalk" \
+     --hostname "$(hostnamectl --static)" \
+     --ipc=host \
+     ghcr.io/rangho/kakaotalk:main
